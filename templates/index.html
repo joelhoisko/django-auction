@@ -28,5 +28,10 @@
     <button type="submit">New user? Register here!</button>
 </form>
 
+<form method="post" action="logout/">
+    {% csrf_token %}
+    <input type="submit" value="Logout">
+</form>
+
 </body>
 </html>

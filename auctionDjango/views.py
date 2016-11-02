@@ -1,27 +1,26 @@
+from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
-from django.contrib.auth import login, authenticate
+from django.contrib import auth
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render
 from django.template import loader
-from django.views.decorators.csrf import csrf_exempt
+
 
 # Create your views here.
 
 
 # default page
 def index(request):
-    # get the cookie
-    if 'welcome_text' in request.COOKIES:
+    # Check if we have a user logged in and display them a message
+    if request.user.is_authenticated():
         context = {
-            'welcome_text': request.COOKIES['welcome_text']
+            'welcome_text': 'Good day {}'.format(request.user.username)
         }
     else:
-        # if cookie not found, make a default
         context = {
-            'welcome_text': 'Hello!'
+            'welcome_text': 'Welcome!'
         }
-
-    # Load the cookie into the index.html and return it
+    # Put the context with the HTML
     template = loader.get_template('index.html')
     return HttpResponse(template.render(context, request))
 
@@ -31,17 +30,22 @@ def check_login(request):
     username = request.POST['login_name']
     password = request.POST['login_password']
     # try to authenticate
+    print('Authenticating...')
     user = authenticate(username=username, password=password)
     if user is not None:
-        welcome_text = 'Welcome back {}!'.format(username)
+        print('found the user, logging in!')
+        # log the user in
+        auth.login(request, user)
+        # return back to the index page
         response = HttpResponseRedirect('/')
-        response.set_cookie('welcome_text', welcome_text)
         return response
     else:
+        # no user found, error!
+        print('Invalid login!')
         return HttpResponse('Invalid login!')
 
 
-# returns registration page
+# returns the registration page
 def register_page(request):
     return render(request, 'register.html')
 
@@ -54,11 +58,15 @@ def add_user(request):
     # Create the user from the data
     new_user = User.objects.create_user(username=user_username, email=user_email, password=user_password)
     new_user.save()
+    # log in the new user immediately
+    auth.login(request, new_user)
 
-    # make the welcome text
-    welcome_text = 'Welcome {}'.format(user_username)
-    # make the response redirect back to the index page and add the cookie to the response
+    # make the response redirect back to the index page
     response = HttpResponseRedirect('/')
-    response.set_cookie('welcome_text', welcome_text)
     return response
 
+
+def logout_view(request):
+    auth.logout(request)
+    response = HttpResponseRedirect('/')
+    return response
