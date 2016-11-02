@@ -15,7 +15,12 @@ Including another URLconf
 """
 from django.conf.urls import url
 from django.contrib import admin
+from auctionDjango import views
 
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
+    url(r'^register/', views.register_page),
+    url(r'^login/', views.check_login),
+    url(r'^add_user/', views.add_user),
+    url(r'$', views.index)
 ]
