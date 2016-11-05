@@ -60,7 +60,6 @@ def add_user(request):
     new_user.save()
     # log in the new user immediately
     auth.login(request, new_user)
-
     # make the response redirect back to the index page
     response = HttpResponseRedirect('/')
     return response
