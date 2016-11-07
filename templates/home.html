@@ -1,0 +1,18 @@
+{%  extends "base.html" %}
+{%  block content %}
+
+
+{% if user.is_authenticated %}
+    <p>Good day {{ user.username }}!</p>
+    <a href="/create_auction/"><p>Create a new auction!</p></a>
+    <form method="post" action="/logout/">
+        {% csrf_token %}
+        <input type="submit" value="Logout">
+    </form>
+{%  else %}
+    <p>Welcome to the auction site!</p>
+    <p>Register an account <a href="/register/">here!</a> </p>
+    <p>Or <a href="/login/">login!</a></p>
+{% endif %}
+
+{%  endblock content %}

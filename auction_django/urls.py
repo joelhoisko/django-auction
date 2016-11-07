@@ -19,9 +19,10 @@ from auctionDjango import views
 
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
-    url(r'^register/', views.register_page),
-    url(r'^login/', views.check_login),
-    url(r'^add_user/', views.add_user),
+    url(r'^home/', views.home, name='home'),
+    url(r'^register/', views.register),
+    url(r'^create_auction/', views.create_auction),
+    url(r'^login/', views.login),
     url(r'^logout/', views.logout_view),
-    url(r'$', views.index)
+    url(r'$', views.home),
 ]
