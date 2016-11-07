@@ -1,6 +1,5 @@
-from django.core.exceptions import ValidationError
+from django.forms import ValidationError
 from django.utils import timezone
-import datetime
 
 
 def validate_deadline(deadline):

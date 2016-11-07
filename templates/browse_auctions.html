@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+
+    <p>List of all auctions.</p>
+    {% for auction in auctions %}
+        <li><b>{{ auction.item.title }}</b></li>
+        <li><a href="/auction/{{ auction.id }}/">Link</a> </li>
+    {% endfor %}
+
+{% endblock content %}

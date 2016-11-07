@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+    <h2>{{ auction.item.title }}</h2>
+    <br>
+    <p>{{ auction.timestamp }}</p>
+    <p>Seller: {{ auction.seller.username }}</p>
+    <p>Description:{{ auction.item.description }}</p>
+    <br>
+    <p>Current price: <b>{{ auction.current_price }}</b></p>
+    <p>Current winner: <b>{{ auction.auction_winner }}</b></p>
+    <p>Ends on: <b>{{ auction.deadline }}</b></p>
+    <p>Until end: {{ days }} days, {{ hours }} hours and {{ minutes }} minutes.</p>
+    <br>
+    <p>Starting price: {{ auction.minimum_price }}</p>
+{% endblock content %}

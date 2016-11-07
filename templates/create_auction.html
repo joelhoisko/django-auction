@@ -3,7 +3,7 @@
     <p>Create an auction!</p>
     <form action="/create_auction/" method="post">
         {%  csrf_token %}
-        {{ form }}
+        {{ form.as_ul }}
         <input type="submit" value="Create">
     </form>
 {% endblock content %}

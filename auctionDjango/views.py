@@ -2,12 +2,13 @@ from django.contrib import auth
 from django.contrib import messages
 from django.contrib.auth import authenticate
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.models import User
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseRedirect, Http404
 from django.shortcuts import render
-from django.utils import timezone
+from django.core.exceptions import ObjectDoesNotExist
 from auctionDjango import forms
-from auctionDjango.models import Auction
+from auctionDjango import model_handler
+from auctionDjango.models import *
+
 
 # Create your views here.
 
@@ -15,6 +16,30 @@ from auctionDjango.models import Auction
 # the homepage
 def home(request):
     return render(request, 'home.html')
+
+
+def auction_view(request, auction_id):
+    try:
+        auction = Auction.objects.get(id=auction_id)
+        until_deadline = auction.deadline - timezone.now()
+        days_left = until_deadline.days
+        hours_left = until_deadline.seconds // 3600
+        minutes_left = until_deadline.seconds % 3600 // 60
+        context = {
+            'auction': auction,
+            'days': days_left,
+            'hours': hours_left,
+            'minutes': minutes_left
+        }
+        return render(request, 'auction.html', context)
+    except ObjectDoesNotExist:
+        raise Http404
+
+
+# for browsing all the Auctions
+def browse(request):
+    auctions = Auction.objects.all()
+    return render(request, 'browse_auctions.html', {'auctions': auctions})
 
 
 @login_required
@@ -25,25 +50,47 @@ def create_auction(request):
         # check validity
         print(auction_form.errors)
         if auction_form.is_valid():
+            # get all the data and save them to variables
             data = auction_form.cleaned_data
-            title = data['title']
-            description = data['description']
-            minimum_price = data['minimum_price']
-            timestamp = timezone.now()
-            deadline = data['deadline']
-
-            # create a new auction
-            new_auction = Auction(title=title, description=description, minimum_price=minimum_price,
-                                  timestamp=timestamp, deadline=deadline, seller=request.user)
-            new_auction.save()
-
-            messages.add_message(request, messages.INFO, 'A new auction has been created!')
-            return HttpResponseRedirect('/')
+            item_title = data['title']
+            item_description = data['description']
+            auction_minimum_price = data['minimum_price']
+            auction_deadline = data['deadline'].timestamp()
+            print('From the view, fresh from the form:')
+            print(auction_deadline)
+            # create the confirmation form
+            confirmation_form = forms.ConfirmAuction()
+            # pass all the information into the context
+            context = {
+                'form': confirmation_form,
+                'item_title': item_title,
+                'item_description': item_description,
+                'auction_minimum_price': auction_minimum_price,
+                'auction_deadline': auction_deadline
+            }
+            # add a lil message and put the context into the site
+            messages.add_message(request, messages.INFO, 'Are you sure that you want to create an auction?')
+            return render(request, 'confirm_auction.html', context)
         else:
             messages.add_message(request, messages.ERROR, 'Please create a valid auction!')
+    else:
+        # create a blank form
+        auction_form = forms.CreateAuction()
 
-    auction_form = forms.CreateAuction()
     return render(request, 'create_auction.html', {'form': auction_form})
+
+
+@login_required
+def confirm_auction(request):
+    # get the users answer and act accordingly
+    answer = request.POST.get('answer')
+    if answer == 'Yes':
+        # send the data to model_handler to take care of it, cleaner that way
+        model_handler.save_auction(request.POST.copy(), request.user)
+        messages.add_message(request, messages.INFO, 'New auction created!')
+
+    # return to the homepage either way
+    return HttpResponseRedirect('/')
 
 
 # login view
@@ -68,7 +115,8 @@ def login(request):
                 messages.add_message(request, messages.ERROR, 'That user doesn\'t exist!')
 
     # else, return the user with a blank login page
-    login_form = forms.LoginUser()
+    else:
+        login_form = forms.LoginUser()
     return render(request, 'login.html', {'form':login_form})
 
 
