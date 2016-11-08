@@ -9,7 +9,9 @@
     <br>
     <b><a href="/home/">Home</a></b>
     <b><a href="/browse/">Browse</a></b>
-    <!-- TODO make this dajango fancy work -->
+    {% if user.is_authenticated %}
+        <b><a href="/profile/">Profile</a></b>
+    {% endif %}
     {% if messages %}
     <ul class="messages">
         {% for message in messages %}

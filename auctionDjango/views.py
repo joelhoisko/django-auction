@@ -2,9 +2,13 @@ from django.contrib import auth
 from django.contrib import messages
 from django.contrib.auth import authenticate
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth import update_session_auth_hash
+from django.utils.decorators import method_decorator
 from django.http import HttpResponseRedirect, Http404
 from django.shortcuts import render
 from django.core.exceptions import ObjectDoesNotExist
+from django.core.mail import send_mail
+from django.views import View
 from auctionDjango import forms
 from auctionDjango import model_handler
 from auctionDjango.models import *
@@ -12,28 +16,111 @@ from auctionDjango.models import *
 
 # Create your views here.
 
-
 # the homepage
 def home(request):
     return render(request, 'home.html')
 
 
-def auction_view(request, auction_id):
-    try:
-        auction = Auction.objects.get(id=auction_id)
-        until_deadline = auction.deadline - timezone.now()
-        days_left = until_deadline.days
-        hours_left = until_deadline.seconds // 3600
-        minutes_left = until_deadline.seconds % 3600 // 60
-        context = {
-            'auction': auction,
-            'days': days_left,
-            'hours': hours_left,
-            'minutes': minutes_left
-        }
-        return render(request, 'auction.html', context)
-    except ObjectDoesNotExist:
-        raise Http404
+# trying out some class-based views
+# have to use a special method_decorator with 'dispatch' when dealing with classes
+@method_decorator(login_required, name='dispatch')
+class ProfileView(View):
+    def get(self, request):
+        return render(request, 'profile.html')
+
+
+# class for editing email
+@method_decorator(login_required, name='dispatch')
+class EditEmailView(View):
+    # class attribute
+    email_form = forms.EditEmail
+
+    # return this for a POST-request, we could also use form_valid for extra fancy
+    def post(self, request):
+        # initialize a form and populate it
+        form = self.email_form(request.POST)
+        if form.is_valid():
+            # save the information
+            model_handler.save_email(form.cleaned_data, request.user)
+            messages.add_message(request, messages.INFO, 'Email changed successfully!')
+            return HttpResponseRedirect('/profile/')
+        else:
+            # add an extra error message
+            messages.add_message(request, messages.ERROR, 'Please check the emails.')
+            # return back to the form
+            return self.get(request)
+
+    # return this for a GET-request
+    def get(self, request):
+        return render(request, 'email.html', {'form': self.email_form})
+
+
+@method_decorator(login_required, name='dispatch')
+class EditPasswordView(View):
+    password_form = forms.EditPassword
+
+    def post(self, request):
+        form = self.password_form(request.POST)
+        if form.is_valid():
+            # save the new password
+            model_handler.save_password(form.cleaned_data, request.user)
+            # authenticate the user again so that they are still logged in
+            # also use form.user as request.user probably logs out immediately
+            update_session_auth_hash(request, request.user)
+            messages.add_message(request, messages.INFO, 'Password changed successfully!')
+            return HttpResponseRedirect('/profile/')
+        else:
+            messages.add_message(request, messages.ERROR, 'Please check the passwords.')
+            return self.get(request)
+
+    def get(self, request):
+        return render(request, 'password.html', {'form': self.password_form})
+
+
+# for viewing an auction and bidding to it it
+class AuctionView(View):
+    # create some attributes
+    auction = None
+    bid_form = forms.BidForm
+
+    def post(self, request, auction_id):
+        # check the auction first
+        try:
+            self.auction = Auction.objects.get(id=auction_id)
+        except ObjectDoesNotExist:
+            raise Http404
+        # create a copy of the form, this is all very, very tiring
+        form = self.bid_form(request.POST)
+        form.auction = self.auction
+        form.buyer = request.user
+        # check validity
+        if form.is_valid():
+            # save the new bid
+            model_handler.save_bid(form.cleaned_data, self.auction, request.user)
+            # get a nice message
+            messages.add_message(request, messages.INFO, 'Your bid has been saved!')
+            # return to the auctions page, remember to pass the auction_id
+            return self.get(request, auction_id)
+        else:
+            messages.add_message(request, messages.ERROR, 'Invalid bid!')
+            # save the form with errors to our classes form so that we can show the errors
+            self.bid_form = form
+            return self.get(request, auction_id)
+
+    # get's the url-parameter(really badly documented in Django imo)
+    def get(self, request, auction_id):
+        try:
+            # get the auction id and update the auction
+            self.auction = Auction.objects.get(id=auction_id)
+            # format the context and add the form to it
+            context = model_handler.format_auction(self.auction)
+            # set the forms attrbutes, we could use the __init__ but im done with this
+            self.bid_form.auction = self.auction
+            self.bid_form.buyer = request.user
+            context.update({'form': self.bid_form})
+            return render(request, 'auction.html', context)
+        except ObjectDoesNotExist:
+            raise Http404
 
 
 # for browsing all the Auctions
@@ -48,7 +135,6 @@ def create_auction(request):
         # create a new instance and populate it
         auction_form = forms.CreateAuction(request.POST)
         # check validity
-        print(auction_form.errors)
         if auction_form.is_valid():
             # get all the data and save them to variables
             data = auction_form.cleaned_data
@@ -56,8 +142,6 @@ def create_auction(request):
             item_description = data['description']
             auction_minimum_price = data['minimum_price']
             auction_deadline = data['deadline'].timestamp()
-            print('From the view, fresh from the form:')
-            print(auction_deadline)
             # create the confirmation form
             confirmation_form = forms.ConfirmAuction()
             # pass all the information into the context
@@ -86,8 +170,17 @@ def confirm_auction(request):
     answer = request.POST.get('answer')
     if answer == 'Yes':
         # send the data to model_handler to take care of it, cleaner that way
-        model_handler.save_auction(request.POST.copy(), request.user)
+        model_handler.save_auction(request.POST, request.user)
         messages.add_message(request, messages.INFO, 'New auction created!')
+        # send an email to the user, check settings.py for credentials
+        # TODO gitignore settings.py
+        send_mail(
+            'You have created an auction!',
+            'Congratulations!',
+            'auctions@django_joel.com',
+            [request.user.email],
+            fail_silently=False,
+        )
 
     # return to the homepage either way
     return HttpResponseRedirect('/')
@@ -142,7 +235,7 @@ def register(request):
             # Add an error message if there is something wrong.
             messages.add_message(request, messages.ERROR, 'Not valid registration!')
 
-    # If here for the first time, just give them te form.
+    # If here for the first time, just give them the form.
     register_form = forms.RegisterUser()
     return render(request, 'register.html', {'form': register_form})
 

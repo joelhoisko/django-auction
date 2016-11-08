@@ -6,10 +6,21 @@
     <p>Seller: {{ auction.seller.username }}</p>
     <p>Description:{{ auction.item.description }}</p>
     <br>
-    <p>Current price: <b>{{ auction.current_price }}</b></p>
-    <p>Current winner: <b>{{ auction.auction_winner }}</b></p>
+    {% if auction.winning_bid %}
+        <p>Current price: <b>{{ auction.winning_bid.bid_amount }}</b></p>
+        <p>Current winner: <b>{{ auction.winning_bid.buyer.username }}</b></p>
+        <p>Starting price:{{ auction.minimum_price }}</p>
+    {% else %}
+        <p>Starting price: <b>{{ auction.minimum_price }}</b></p>
+    {% endif %}
+    {% if user.is_authenticated %}
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <input type="submit" value="Bid!">
+    </form>
+    {% endif %}
     <p>Ends on: <b>{{ auction.deadline }}</b></p>
     <p>Until end: {{ days }} days, {{ hours }} hours and {{ minutes }} minutes.</p>
     <br>
-    <p>Starting price: {{ auction.minimum_price }}</p>
 {% endblock content %}
