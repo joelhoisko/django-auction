@@ -130,6 +130,27 @@ class AuctionView(View):
             raise Http404
 
 
+# for browsing and searching auctions
+class BrowseView(View):
+    search_form = forms.SearchForm
+
+    def post(self, request):
+        form = self.search_form(request.POST)
+
+        if form.is_valid():
+            search = form.cleaned_data['search']
+
+            auctions = Auction.objects.filter(status='AC', item__title__contains=search)
+            self.search_form = form
+            return render(request, 'browse_auctions.html', {'auctions': auctions, 'form': self.search_form})
+        else:
+            return self.get(request)
+
+    def get(self, request):
+        auctions = Auction.objects.filter(status='AC')
+        return render(request, 'browse_auctions.html', {'auctions': auctions, 'form': self.search_form})
+
+
 # for browsing all the Auctions
 def browse(request):
     auctions = Auction.objects.filter(status='AC')

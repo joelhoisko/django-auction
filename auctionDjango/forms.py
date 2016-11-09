@@ -17,6 +17,10 @@ class LoginUser(forms.Form):
     password = forms.CharField(widget=forms.PasswordInput)
 
 
+class SearchForm(forms.Form):
+    search = forms.CharField()
+
+
 class BidForm(forms.Form):
     bid_amount = forms.DecimalField(max_digits=9, decimal_places=2,
                                     validators=[MinValueValidator(Decimal('0.01'))])

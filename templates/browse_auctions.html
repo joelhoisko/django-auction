@@ -1,5 +1,9 @@
 {% extends "base.html" %}
 {% block content %}
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+    </form>
     {% if auctions %}
         <p>List of all auctions.</p>
         {% for auction in auctions %}
@@ -7,6 +11,6 @@
             <li><a href="/auction/{{ auction.id }}/">Link</a> </li>
         {% endfor %}
     {% else %}
-        <p>No auctions created, go and make some!</p>
+        <p>No auctions found, go make some!</p>
     {% endif %}
 {% endblock content %}
