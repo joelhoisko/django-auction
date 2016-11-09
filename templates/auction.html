@@ -14,13 +14,16 @@
         <p>Starting price: <b>{{ auction.minimum_price }}</b></p>
     {% endif %}
     {% if user.is_authenticated %}
-    <form method="post">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <input type="submit" value="Bid!">
-    </form>
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <input type="submit" value="Bid!">
+        </form>
     {% endif %}
     <p>Ends on: <b>{{ auction.deadline }}</b></p>
     <p>Until end: {{ days }} days, {{ hours }} hours and {{ minutes }} minutes.</p>
     <br>
+    {% if user.is_staff %}
+        <b><a href="ban/">Ban</a></b>
+    {% endif %}
 {% endblock content %}

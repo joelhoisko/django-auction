@@ -8,5 +8,8 @@
     <!-- TODO make the user profile show active actions -->
     {% if auctions %}
         <p>List of your active auctions:</p>
+        {% for auction in auctions %}
+            <li><a href="/editauction/{{ auction.id }}/">{{ auction.item.title }}</a> </li>
+        {% endfor %}
     {% endif %}
 {% endblock content %}

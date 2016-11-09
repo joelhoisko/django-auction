@@ -4,6 +4,7 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import update_session_auth_hash
 from django.utils.decorators import method_decorator
+from django.contrib.admin.views.decorators import staff_member_required
 from django.http import HttpResponseRedirect, Http404
 from django.shortcuts import render
 from django.core.exceptions import ObjectDoesNotExist
@@ -25,8 +26,11 @@ def home(request):
 # have to use a special method_decorator with 'dispatch' when dealing with classes
 @method_decorator(login_required, name='dispatch')
 class ProfileView(View):
+
     def get(self, request):
-        return render(request, 'profile.html')
+        # get the active Auctions where the user is the seller
+        auctions = Auction.objects.filter(seller=request.user, status='AC')
+        return render(request, 'profile.html', {'auctions': auctions})
 
 
 # class for editing email
@@ -117,7 +121,7 @@ class AuctionView(View):
                 raise Http404
             # format the context and add the form to it
             context = model_handler.format_auction(self.auction)
-            # set the forms attrbutes, we could use the __init__ but im done with this
+            # set the forms attributes, we could use the __init__ but im done with this
             self.bid_form.auction = self.auction
             self.bid_form.buyer = request.user
             context.update({'form': self.bid_form})
@@ -167,13 +171,57 @@ def create_auction(request):
     return render(request, 'create_auction.html', {'form': auction_form})
 
 
+@method_decorator(login_required, name='dispatch')
 class AuctionEditView(View):
-    def post(self, request):
+    edit_form = forms.DescriptionForm
+    auction = None
+
+    def post(self, request, auction_id):
+        # get the form from POST
+        form = self.edit_form(request.POST)
+        if form.is_valid():
+            # save the new description
+            try:
+                # get the auction
+                self.auction = Auction.objects.get(id=auction_id)
+            except ObjectDoesNotExist:
+                raise Http404
+            # save the form, add a message and redirect to /profile/
+            model_handler.save_description(form.cleaned_data, self.auction)
+            messages.add_message(request, messages.INFO, 'The description has been saved.')
+            return HttpResponseRedirect('/profile/')
+        else:
+            messages.add_message(request, messages.ERROR, 'Description too long!')
+            self.edit_form = form
+            return self.get(request, auction_id)
+
+    def get(self, request, auction_id):
+        try:
+            # get the auction
+            self.auction = Auction.objects.get(id=auction_id)
+        except ObjectDoesNotExist:
+            raise Http404
+        # check that the auction is active, just in case the user directly inputs the url
+        if self.auction.status != 'AC':
+            raise Http404
+        # now make the description
+        description = self.auction.item.description
+        self.edit_form = forms.DescriptionForm(initial={'description': description})
+        return render(request, 'edit_auction.html', {'form': self.edit_form})
 
 
-    def get(self, request):
+# super dumb view, but bans a single auction
+@method_decorator(staff_member_required, name='dispatch')
+class AuctionBanView(View):
 
-
+    def get(self, request, auction_id):
+        try:
+            auction = Auction.objects.get(id=auction_id)
+        except ObjectDoesNotExist:
+            raise Http404
+        # ban the auction and return to the homepage
+        model_handler.ban_auction(auction)
+        return HttpResponseRedirect('/home/')
 
 
 @login_required
@@ -185,7 +233,6 @@ def confirm_auction(request):
         model_handler.save_auction(request.POST, request.user)
         messages.add_message(request, messages.INFO, 'New auction created!')
         # send an email to the user, check settings.py for credentials
-        # TODO gitignore settings.py
         send_mail(
             'You have created an auction!',
             'Congratulations!',

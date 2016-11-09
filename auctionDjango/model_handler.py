@@ -71,6 +71,7 @@ def resolve_auction(auction):
     # and make the auction 'Adjudicated'
     auction.status = auction.STATUS_CHOICE[3][0]
     auction.save()
+    print('Auction id={} has been resolved.'.format(auction.id))
     # the auction has officially closed!
 
 
@@ -148,6 +149,42 @@ def format_auction(auction):
         'hours': hours_left,
         'minutes': minutes_left
     }
+
+
+# bans a single auction and send mail about it
+def ban_auction(auction):
+    # ban the auction and save
+    auction.status = auction.STATUS_CHOICE[1][0]
+    auction.save()
+    # inform all the people
+    send_mail(
+        'Your auction {} has been banned!'.format(auction.item.title),
+        'Your auction has been banned!',
+        'auctions@django_joel.com',
+        [auction.seller.email],
+        fail_silently=False,
+    )
+    # get the bidders
+    bidder_list = get_auction_bidders(auction)
+    # iterate through them
+    for bidder in bidder_list:
+        send_mail(
+            'An auction you have bid on has been banned!',
+            'The auction for {} has been banned!'.format(auction.item.title),
+            'auctions@django_joel.com',
+            [bidder.email],
+            fail_silently=False,
+        )
+
+
+# save the new description
+def save_description(form_data, auction):
+    new_description = form_data['description']
+    auction.item.description = new_description
+    # remember to save the item
+    auction.item.save()
+    # not sure if this is required, but we do it
+    auction.save()
 
 
 # saves the email address to the user
