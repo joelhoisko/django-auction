@@ -1,5 +1,6 @@
 from django import forms
 from _decimal import *
+from django.core.validators import MinValueValidator
 from auctionDjango.auction_validators import *
 
 
@@ -17,7 +18,8 @@ class LoginUser(forms.Form):
 
 
 class BidForm(forms.Form):
-    bid_amount = forms.DecimalField(max_digits=9, decimal_places=2)
+    bid_amount = forms.DecimalField(max_digits=9, decimal_places=2,
+                                    validators=[MinValueValidator(Decimal('0.01'))])
     # these are set in the view, I kow it's ugly
     auction = None
     buyer = None
@@ -37,6 +39,9 @@ class BidForm(forms.Form):
 
             current_price = self.auction.winning_bid.bid_amount
 
+        # check that the bid amount is valid
+        if bid_amount is None:
+            raise forms.ValidationError('Please use only 2 decimals.')
         # check that buyer != seller
         if self.buyer == self.auction.seller:
             raise forms.ValidationError('You can not bid on your own auction!')
@@ -93,11 +98,15 @@ class EditPassword(forms.Form):
         return cleaned_data
 
 
+class DescriptionForm(forms.Form):
+    description = forms.CharField(widget=forms.Textarea)
+
+
 # form to create a new auction with
 class CreateAuction(forms.Form):
     title = forms.CharField()
     description = forms.CharField(widget=forms.Textarea)
-    minimum_price = forms.DecimalField()
+    minimum_price = forms.DecimalField(validators=[MinValueValidator(Decimal('0.01'))])
     deadline = forms.DateTimeField(initial=timezone.now(), validators=[validate_deadline],
                                    help_text='Format should be "YYYY-MM-DD HH:MM:SS"')
 

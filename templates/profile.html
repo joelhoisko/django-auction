@@ -5,4 +5,8 @@
     <p>Email: {{ user.email }}. <a href="/profile/email/">Change your email.</a> </p>
     <br>
     <p><a href="/profile/password/">Change your password.</a> </p>
+    <!-- TODO make the user profile show active actions -->
+    {% if auctions %}
+        <p>List of your active auctions:</p>
+    {% endif %}
 {% endblock content %}

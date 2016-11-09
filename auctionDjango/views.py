@@ -112,6 +112,9 @@ class AuctionView(View):
         try:
             # get the auction id and update the auction
             self.auction = Auction.objects.get(id=auction_id)
+            # check that the auction is active, just in case the user directly inputs the url
+            if self.auction.status != 'AC':
+                raise Http404
             # format the context and add the form to it
             context = model_handler.format_auction(self.auction)
             # set the forms attrbutes, we could use the __init__ but im done with this
@@ -125,7 +128,7 @@ class AuctionView(View):
 
 # for browsing all the Auctions
 def browse(request):
-    auctions = Auction.objects.all()
+    auctions = Auction.objects.filter(status='AC')
     return render(request, 'browse_auctions.html', {'auctions': auctions})
 
 
@@ -162,6 +165,15 @@ def create_auction(request):
         auction_form = forms.CreateAuction()
 
     return render(request, 'create_auction.html', {'form': auction_form})
+
+
+class AuctionEditView(View):
+    def post(self, request):
+
+
+    def get(self, request):
+
+
 
 
 @login_required

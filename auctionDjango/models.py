@@ -1,4 +1,6 @@
 from django.db import models
+from django.core.validators import MinValueValidator
+from _decimal import *
 from django.contrib.auth.models import User
 from auctionDjango.auction_validators import *
 # Create your models here.
@@ -19,7 +21,8 @@ class Auction(models.Model):
         ('AD', 'Adjudicated'),
     )
     item = models.ForeignKey(Item)
-    minimum_price = models.DecimalField(max_digits=9, decimal_places=2, default=0)
+    minimum_price = models.DecimalField(max_digits=9, decimal_places=2, default=0,
+                                        validators=[MinValueValidator(Decimal('0.01'))])
     timestamp = models.DateTimeField('date published')
     deadline = models.DateTimeField('deadline', validators=[validate_deadline])
     # have to use 'Bid' to refer to model that has not yet been declared

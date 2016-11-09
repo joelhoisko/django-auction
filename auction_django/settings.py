@@ -27,6 +27,7 @@ ALLOWED_HOSTS = []
 
 
 # Application definition
+# auctionDjango for us, django_crontab for running the cronjob
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -36,6 +37,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'auctionDjango',
+    'django_crontab',
 ]
 
 MIDDLEWARE = [
@@ -110,11 +112,21 @@ LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'Europe/Helsinki'
 
 # email host settings, passwords etc are imported from secret_settings
+# for testing, use this backend
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 EMAIL_HOST = host
 EMAIL_HOST_USER = host_user
 EMAIL_HOST_PASSWORD = host_password
 EMAIL_PORT = host_port
 EMAIL_USE_TLS = True
+
+# REMEMBER
+# add the cronjobs to your local crontab, always do after changing cron things:
+# $ python3 manage.py crontab add
+# I could rather call a function/class and that could be prettier, but I want to learn this
+CRONJOBS = [
+    ('*/1 * * * *', 'django.core.management.call_command', ['resolveauctions']),
+]
 
 USE_I18N = True
 
