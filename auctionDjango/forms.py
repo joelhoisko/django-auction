@@ -5,14 +5,14 @@ from auctionDjango.auction_validators import *
 
 
 # form to register users with
-class RegisterUser(forms.Form):
+class RegistrationForm(forms.Form):
     username = forms.CharField()
     email = forms.EmailField()
     password = forms.CharField(widget=forms.PasswordInput)
 
 
 # form to login with
-class LoginUser(forms.Form):
+class LoginForm(forms.Form):
     username = forms.CharField()
     password = forms.CharField(widget=forms.PasswordInput)
 
@@ -59,7 +59,7 @@ class BidForm(forms.Form):
 
 
 # edit the users email
-class EditEmail(forms.Form):
+class EmailForm(forms.Form):
     new_email = forms.EmailField()
     confirm_new_email = forms.EmailField()
 
@@ -67,7 +67,7 @@ class EditEmail(forms.Form):
     # overrides the default clean()-method
     def clean(self):
         # call for super so that we don't break the inherited clean()
-        cleaned_data = super(EditEmail, self).clean()
+        cleaned_data = super(EmailForm, self).clean()
         # get the emails, have to use .get(), otherwise it might break it KeyError
         new_email = cleaned_data.get('new_email')
         confirm_new_email = cleaned_data.get('confirm_new_email')
@@ -81,14 +81,14 @@ class EditEmail(forms.Form):
         return cleaned_data
 
 
-class EditPassword(forms.Form):
+class PasswordForm(forms.Form):
     new_password = forms.CharField(widget=forms.PasswordInput)
     confirm_new_password = forms.CharField(widget=forms.PasswordInput)
 
     # override the default clean so that we can do fancy form validating
     def clean(self):
         # call for super so the inherited stuff doesn't break
-        cleaned_data = super(EditPassword, self).clean()
+        cleaned_data = super(PasswordForm, self).clean()
         # get the passwords, use get()
         new_password = cleaned_data.get('new_password')
         confirm_new_password = cleaned_data.get('confirm_new_password')
@@ -102,19 +102,22 @@ class EditPassword(forms.Form):
         return cleaned_data
 
 
+# used for editing an auction
 class DescriptionForm(forms.Form):
     description = forms.CharField(widget=forms.Textarea)
 
 
 # form to create a new auction with
-class CreateAuction(forms.Form):
+class AuctionForm(forms.Form):
     title = forms.CharField()
+    # Textare for a big box
     description = forms.CharField(widget=forms.Textarea)
+    # use the MinValueValidator for checking the mimimum 'step'
     minimum_price = forms.DecimalField(validators=[MinValueValidator(Decimal('0.01'))])
     deadline = forms.DateTimeField(initial=timezone.now(), validators=[validate_deadline],
                                    help_text='Format should be "YYYY-MM-DD HH:MM:SS"')
 
 
-class ConfirmAuction(forms.Form):
+class ConfirmForm(forms.Form):
     CHOICES = (('Yes', 'Yes'), ('No', 'No'))
     answer = forms.ChoiceField(choices=CHOICES)

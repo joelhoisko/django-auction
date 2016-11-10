@@ -4,7 +4,7 @@
     <form action="/create_auction/confirm/" method="POST">
         {% csrf_token %}
         {{ form }}
-        {# have to have |safe with the variable, otherwise django by default escapes them #}
+        {# have to have |safe with the variables, otherwise django by default escapes them #}
         <input type="hidden" name="item_title" value={{ item_title|safe }}>
         <input type="hidden" name="item_description" value={{ item_description|safe }}>
         <input type="hidden" name="auction_minimum_price" value={{ auction_minimum_price|safe }}>

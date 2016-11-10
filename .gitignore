@@ -2,3 +2,4 @@
 env/
 auction_django/secret_settings.py
 db.sqlite3
+*.py

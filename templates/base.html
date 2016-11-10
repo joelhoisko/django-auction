@@ -5,6 +5,7 @@
     <title>Title</title>
 </head>
 <body>
+<!-- All the other .html files extend this one -->
 <h1>Welcome to the Auction site!</h1>
     <br>
     <b><a href="/home/">Home</a></b>
@@ -12,6 +13,7 @@
     {% if user.is_authenticated %}
         <b><a href="/profile/">Profile</a></b>
     {% endif %}
+    <!-- Display all the messages we are gonna send from the views -->
     {% if messages %}
     <ul class="messages">
         {% for message in messages %}
@@ -19,9 +21,8 @@
         {% endfor %}
     </ul>
     {% endif %}
-
+    <!-- Inside this block we are gonna put all the stuff from the other .html files -->
     {%  block content %}
     {%  endblock %}
-
 </body>
 </html>

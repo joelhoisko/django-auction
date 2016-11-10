@@ -112,7 +112,8 @@ LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'Europe/Helsinki'
 
 # email host settings, passwords etc are imported from secret_settings
-# for testing, use this backend
+# IMPORTANT you have to provide them yourself
+# for testing, use this backend to send the emails to the console
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 EMAIL_HOST = host
 EMAIL_HOST_USER = host_user
@@ -123,7 +124,8 @@ EMAIL_USE_TLS = True
 # REMEMBER
 # add the cronjobs to your local crontab, always do after changing cron things:
 # $ python3 manage.py crontab add
-# I could rather call a function/class and that could be prettier, but I want to learn this
+# I could rather call a function/class and that could be prettier,
+# but I want to learn commands and they seem like the right way for crontab
 CRONJOBS = [
     ('*/1 * * * *', 'django.core.management.call_command', ['resolveauctions']),
 ]

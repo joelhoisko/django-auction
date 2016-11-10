@@ -4,7 +4,7 @@ from django.core.mail import send_mail
 import datetime
 import pytz
 
-# TODO create a method to send email to all people related to an Auction
+# this file is used as a helper for all kinds of stuff, mostly saving stuff into the database
 
 
 # returns a list of all the Users who have taken some part in the Auction

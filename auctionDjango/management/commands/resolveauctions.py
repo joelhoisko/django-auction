@@ -18,5 +18,7 @@ class Command(BaseCommand):
             if model_handler.check_due(auction):
                 # the auction was due, now resolve it
                 model_handler.resolve_auction(auction)
-        # write about the success
+        # write about the success,
+        # but far as I have seen it doesn't print or log this anywhere, even if I output it to a file
+        # because crond(cron daemon)
         self.stdout.write(self.style.SUCCESS('Auctions checked!'))

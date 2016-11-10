@@ -25,7 +25,7 @@ class Auction(models.Model):
                                         validators=[MinValueValidator(Decimal('0.01'))])
     timestamp = models.DateTimeField('date published')
     deadline = models.DateTimeField('deadline', validators=[validate_deadline])
-    # have to use 'Bid' to refer to model that has not yet been declared
+    # have to use 'Bid' to refer to teh Bid-class that has not yet been declared
     winning_bid = models.ForeignKey('Bid', null=True, related_name='auction_winner')
     seller = models.ForeignKey(User, related_name='seller')
     status = models.CharField(max_length=2, choices=STATUS_CHOICE, default=STATUS_CHOICE[0][0])

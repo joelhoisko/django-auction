@@ -2,6 +2,7 @@ from django.forms import ValidationError
 from django.utils import timezone
 
 
+# a validator for checking that the user inputted deadline is at least 72h into the future
 def validate_deadline(deadline):
     delta_time = deadline - timezone.now()
 

@@ -15,70 +15,37 @@ from auctionDjango import model_handler
 from auctionDjango.models import *
 
 
-# Create your views here.
+# I started with using function-based views but changed to class-based later on
+# so just bare with the confusion
 
 # the homepage
 def home(request):
     return render(request, 'home.html')
 
 
-# trying out some class-based views
-# have to use a special method_decorator with 'dispatch' when dealing with classes
-@method_decorator(login_required, name='dispatch')
-class ProfileView(View):
+# for browsing and searching auctions
+class BrowseView(View):
+    search_form = forms.SearchForm
 
-    def get(self, request):
-        # get the active Auctions where the user is the seller
-        auctions = Auction.objects.filter(seller=request.user, status='AC')
-        return render(request, 'profile.html', {'auctions': auctions})
-
-
-# class for editing email
-@method_decorator(login_required, name='dispatch')
-class EditEmailView(View):
-    # class attribute
-    email_form = forms.EditEmail
-
-    # return this for a POST-request, we could also use form_valid for extra fancy
+    # for when the user searches for a auction
     def post(self, request):
-        # initialize a form and populate it
-        form = self.email_form(request.POST)
+        form = self.search_form(request.POST)
         if form.is_valid():
-            # save the information
-            model_handler.save_email(form.cleaned_data, request.user)
-            messages.add_message(request, messages.INFO, 'Email changed successfully!')
-            return HttpResponseRedirect('/profile/')
+            # get the search-string and make a query with it
+            search = form.cleaned_data['search']
+            # 'contains' is the key here. Also case-insensitive for some reason
+            auctions = Auction.objects.filter(status='AC', item__title__contains=search)
+            self.search_form = form
+            return render(request, 'browse_auctions.html', {'auctions': auctions, 'form': self.search_form})
         else:
-            # add an extra error message
-            messages.add_message(request, messages.ERROR, 'Please check the emails.')
-            # return back to the form
-            return self.get(request)
-
-    # return this for a GET-request
-    def get(self, request):
-        return render(request, 'email.html', {'form': self.email_form})
-
-
-@method_decorator(login_required, name='dispatch')
-class EditPasswordView(View):
-    password_form = forms.EditPassword
-
-    def post(self, request):
-        form = self.password_form(request.POST)
-        if form.is_valid():
-            # save the new password
-            model_handler.save_password(form.cleaned_data, request.user)
-            # authenticate the user again so that they are still logged in
-            # also use form.user as request.user probably logs out immediately
-            update_session_auth_hash(request, request.user)
-            messages.add_message(request, messages.INFO, 'Password changed successfully!')
-            return HttpResponseRedirect('/profile/')
-        else:
-            messages.add_message(request, messages.ERROR, 'Please check the passwords.')
+            # just in case the form had some errors(shouldn't be any?)
+            self.search_form = form
             return self.get(request)
 
     def get(self, request):
-        return render(request, 'password.html', {'form': self.password_form})
+        # get all the active auctions to a QuerySet
+        auctions = Auction.objects.filter(status='AC')
+        return render(request, 'browse_auctions.html', {'auctions': auctions, 'form': self.search_form})
 
 
 # for viewing an auction and bidding to it it
@@ -88,16 +55,17 @@ class AuctionView(View):
     bid_form = forms.BidForm
 
     def post(self, request, auction_id):
-        # check the auction first
+        # check that the auction exists
         try:
             self.auction = Auction.objects.get(id=auction_id)
         except ObjectDoesNotExist:
             raise Http404
-        # create a copy of the form, this is all very, very tiring
+        # create a copy of the form and set it's attributes
+        # why not use __init__ of the form? Because I couldn't get it to work after many hours
         form = self.bid_form(request.POST)
         form.auction = self.auction
         form.buyer = request.user
-        # check validity
+        # check validity using our custom clean()-function, declared in the form
         if form.is_valid():
             # save the new bid
             model_handler.save_bid(form.cleaned_data, self.auction, request.user)
@@ -113,55 +81,30 @@ class AuctionView(View):
 
     # get's the url-parameter(really badly documented in Django imo)
     def get(self, request, auction_id):
+        # check that the auction exists again
         try:
-            # get the auction id and update the auction
             self.auction = Auction.objects.get(id=auction_id)
-            # check that the auction is active, just in case the user directly inputs the url
-            if self.auction.status != 'AC':
-                raise Http404
-            # format the context and add the form to it
-            context = model_handler.format_auction(self.auction)
-            # set the forms attributes, we could use the __init__ but im done with this
-            self.bid_form.auction = self.auction
-            self.bid_form.buyer = request.user
-            context.update({'form': self.bid_form})
-            return render(request, 'auction.html', context)
         except ObjectDoesNotExist:
             raise Http404
+        # check that the auction is active, just in case the user directly inputs the url
+        if self.auction.status != 'AC':
+            raise Http404
+        # format the context and add the form to it
+        context = model_handler.format_auction(self.auction)
+        # set the forms attributes, we could use the __init__ but im so done
+        self.bid_form.auction = self.auction
+        self.bid_form.buyer = request.user
+        # add the form to the context
+        context.update({'form': self.bid_form})
+        return render(request, 'auction.html', context)
 
 
-# for browsing and searching auctions
-class BrowseView(View):
-    search_form = forms.SearchForm
-
-    def post(self, request):
-        form = self.search_form(request.POST)
-
-        if form.is_valid():
-            search = form.cleaned_data['search']
-
-            auctions = Auction.objects.filter(status='AC', item__title__contains=search)
-            self.search_form = form
-            return render(request, 'browse_auctions.html', {'auctions': auctions, 'form': self.search_form})
-        else:
-            return self.get(request)
-
-    def get(self, request):
-        auctions = Auction.objects.filter(status='AC')
-        return render(request, 'browse_auctions.html', {'auctions': auctions, 'form': self.search_form})
-
-
-# for browsing all the Auctions
-def browse(request):
-    auctions = Auction.objects.filter(status='AC')
-    return render(request, 'browse_auctions.html', {'auctions': auctions})
-
-
+# this could very easily be a class-based view but eh
 @login_required
 def create_auction(request):
     if request.method == 'POST':
         # create a new instance and populate it
-        auction_form = forms.CreateAuction(request.POST)
+        auction_form = forms.AuctionForm(request.POST)
         # check validity
         if auction_form.is_valid():
             # get all the data and save them to variables
@@ -171,7 +114,7 @@ def create_auction(request):
             auction_minimum_price = data['minimum_price']
             auction_deadline = data['deadline'].timestamp()
             # create the confirmation form
-            confirmation_form = forms.ConfirmAuction()
+            confirmation_form = forms.ConfirmForm()
             # pass all the information into the context
             context = {
                 'form': confirmation_form,
@@ -186,8 +129,9 @@ def create_auction(request):
         else:
             messages.add_message(request, messages.ERROR, 'Please create a valid auction!')
     else:
+        # this means we got a GET-request
         # create a blank form
-        auction_form = forms.CreateAuction()
+        auction_form = forms.AuctionForm()
 
     return render(request, 'create_auction.html', {'form': auction_form})
 
@@ -212,6 +156,7 @@ class AuctionEditView(View):
             messages.add_message(request, messages.INFO, 'The description has been saved.')
             return HttpResponseRedirect('/profile/')
         else:
+            # form vas invalid for some reason, maybe too long description
             messages.add_message(request, messages.ERROR, 'Description too long!')
             self.edit_form = form
             return self.get(request, auction_id)
@@ -231,7 +176,7 @@ class AuctionEditView(View):
         return render(request, 'edit_auction.html', {'form': self.edit_form})
 
 
-# super dumb view, but bans a single auction
+# super dumb view, but bans a single auction. Very ugly.
 @method_decorator(staff_member_required, name='dispatch')
 class AuctionBanView(View):
 
@@ -271,7 +216,7 @@ def login(request):
     # check if we are coming here from the form
     if request.method == 'POST':
         # create an instance of the form and populate it with the one from the request
-        login_form = forms.LoginUser(request.POST)
+        login_form = forms.LoginForm(request.POST)
         # check the form
         if login_form.is_valid():
             data = login_form.cleaned_data
@@ -289,7 +234,7 @@ def login(request):
 
     # else, return the user with a blank login page
     else:
-        login_form = forms.LoginUser()
+        login_form = forms.LoginForm()
     return render(request, 'login.html', {'form':login_form})
 
 
@@ -297,7 +242,7 @@ def login(request):
 def register(request):
     if request.method == 'POST':
         # create a form and populate it with the user-filled form
-        register_form = forms.RegisterUser(request.POST)
+        register_form = forms.RegistrationForm(request.POST)
         # check the form
         if register_form.is_valid():
             # the form is good, get the clean data
@@ -316,8 +261,71 @@ def register(request):
             messages.add_message(request, messages.ERROR, 'Not valid registration!')
 
     # If here for the first time, just give them the form.
-    register_form = forms.RegisterUser()
+    register_form = forms.RegistrationForm()
     return render(request, 'register.html', {'form': register_form})
+
+
+# trying out some class-based views
+# have to use a special method_decorator with 'dispatch' when dealing with classes
+@method_decorator(login_required, name='dispatch')
+class ProfileView(View):
+    def post(self, request):
+        return self.get(request)
+
+    def get(self, request):
+        # get the active Auctions where the user is the seller
+        auctions = Auction.objects.filter(seller=request.user, status='AC')
+        return render(request, 'profile.html', {'auctions': auctions})
+
+
+# class for editing email
+@method_decorator(login_required, name='dispatch')
+class EditEmailView(View):
+    # class attribute
+    email_form = forms.EmailForm
+
+    # return this for a POST-request, we could also use form_valid for extra fancy
+    def post(self, request):
+        # initialize a form and populate it
+        form = self.email_form(request.POST)
+        if form.is_valid():
+            # save the information
+            model_handler.save_email(form.cleaned_data, request.user)
+            messages.add_message(request, messages.INFO, 'Email changed successfully!')
+            return HttpResponseRedirect('/profile/')
+        else:
+            # add an extra error message
+            messages.add_message(request, messages.ERROR, 'Please check the emails.')
+            # return back to the form
+            return self.get(request)
+
+    # return this for a GET-request
+    def get(self, request):
+        return render(request, 'email.html', {'form': self.email_form})
+
+
+# class for editing the password
+@method_decorator(login_required, name='dispatch')
+class EditPasswordView(View):
+    password_form = forms.PasswordForm
+
+    def post(self, request):
+        form = self.password_form(request.POST)
+        if form.is_valid():
+            # save the new password
+            model_handler.save_password(form.cleaned_data, request.user)
+            # authenticate the user again so that they are still logged in
+            # also use form.user as request.user probably logs out immediately
+            update_session_auth_hash(request, request.user)
+            messages.add_message(request, messages.INFO, 'Password changed successfully!')
+            return HttpResponseRedirect('/profile/')
+        else:
+            messages.add_message(request, messages.ERROR, 'Please check the passwords.')
+            return self.get(request)
+
+    # show the form
+    def get(self, request):
+        return render(request, 'password.html', {'form': self.password_form})
 
 
 # logout the user
